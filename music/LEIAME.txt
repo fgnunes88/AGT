@@ -1,0 +1,14 @@
+MÚSICAS DO JOGO (formato .mp3, .ogg ou .wav)
+Use exatamente estes nomes. O jogo coloca as músicas em loop sozinho.
+
+tema        Menu inicial e tela FIM
+recife      Zona 1 - Recife de Coral
+mar_aberto  Zona 2 - Mar Aberto        (se faltar, toca "recife")
+penumbra    Zona 3 - Zona da Penumbra
+fossa       Zona 4 - Fossa das Marianas (se faltar, toca "penumbra")
+perigo      Quando um drone entra em ALERTA (!)
+megalodon   Do alarme da megabase até escanear o Megalodon (se faltar, toca "perigo")
+santuario   Santuário Perdido e cena final (se faltar, toca "tema")
+
+Exemplo: music/recife.mp3
+Arquivo que faltar é simplesmente ignorado: o jogo funciona sem ele.

@@ -1,0 +1,38 @@
+EFEITOS SONOROS E VINHETAS (de preferência .wav; também aceita .ogg e .mp3)
+Use exatamente estes nomes. Arquivo que faltar é ignorado: o jogo funciona sem ele.
+
+--- Vinhetas (recompensas) ---
+nova_especie      Microchip implantado / nova espécie no catálogo
+tubarao_solto     Tubarão solto da rede ou gaiola
+casco             Casco reforçado (nova zona liberada)
+peca              Peça da Corporação recolhida (sem liberar zona)
+gravacao          Gravação do pai encontrada
+fim               Aparece a palavra FIM
+
+--- Manta e ferramentas ---
+motor             Motor do Manta (LOOP - fica tocando; mais alto quando anda rápido)
+escaneando        Scanner ligado enquanto segura ESPAÇO (LOOP) - também aceita "escaneado"
+chip_disparo      Dardo do chip de proteção sendo disparado (tecla F)
+chip              Chip implantado: um tubarão protegido
+emp               Pulso EMP (tecla Q)
+apanhado          Um inimigo apanhou o Manta
+
+--- Inimigos ---
+suspeita          Um inimigo ficou desconfiado (?)
+alerta            Um inimigo te viu (!)
+garra             O barco do Sindicato baixa a garra
+sonar_onda        A boia-sonar solta uma onda (só se ouve perto dela)
+sonar_alarme      A onda da boia-sonar acertou o Manta
+
+--- Final ---
+alarme_base       Sirenes da megabase
+megalodon_rugido  O Megalodon acorda
+impacto           O Megalodon bate na megabase (3 vezes)
+
+--- Menus ---
+menu_mover        Mudar de opção no menu inicial
+menu_ok           Escolher uma opção
+catalogo          Abrir o catálogo
+
+Os efeitos que vêm de inimigos ficam mais baixos quanto mais longe do Manta.
+Para os efeitos em LOOP, corte o silêncio do começo e do fim no Audacity.

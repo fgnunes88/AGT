@@ -1,0 +1,5 @@
+# Cache do editor Godot (é recriado automaticamente)
+.godot/
+# Testes automáticos usados no desenvolvimento
+tests/
+*.tmp
