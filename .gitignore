@@ -3,3 +3,5 @@
 # Testes automáticos usados no desenvolvimento
 tests/
 *.tmp
+# Pasta de arquivos do app Claude (não faz parte do jogo)
+Claude outputs/
