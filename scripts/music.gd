@@ -84,11 +84,15 @@ func _ready() -> void:
 	web = OS.has_feature("web")
 	if web:
 		JavaScriptBridge.eval(JS_INIT, true)
-	_ensure_bus("Music")
-	_ensure_bus("SFX")
+	# No navegador NÃO criamos canais de áudio extras: o Godot 4.3 os liga em círculo
+	# (Master -> SFX -> Music -> Master) e o navegador silencia todos os efeitos.
+	# Lá a música já toca pelo HTML, então os efeitos vão direto para o Master.
+	if not web:
+		_ensure_bus("Music")
+		_ensure_bus("SFX")
 	for i in 2:
 		var p := AudioStreamPlayer.new()
-		p.bus = "Music"
+		p.bus = "Master" if web else "Music"
 		p.volume_db = -80.0
 		# No navegador, "sample" decodifica a música inteira de uma vez (lento e pesado).
 		# Em modo "stream" ela é lida aos poucos, como no PC.
@@ -97,7 +101,7 @@ func _ready() -> void:
 		players.append(p)
 	for i in 4:
 		var s := AudioStreamPlayer.new()
-		s.bus = "SFX"
+		s.bus = sfx_bus()
 		s.volume_db = SFX_DB
 		add_child(s)
 		sfx_players.append(s)
@@ -105,6 +109,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	clock += delta
+
+
+func sfx_bus() -> String:
+	return "Master" if web else "SFX"
 
 
 func _ensure_bus(bus_name: String) -> void:
@@ -248,7 +256,7 @@ func loop_sfx(sfx_name: String, on: bool, volume_db := 0.0) -> void:
 		s = s.duplicate() as AudioStream
 		_set_loop(s)
 		p = AudioStreamPlayer.new()
-		p.bus = "SFX"
+		p.bus = sfx_bus()
 		p.stream = s
 		add_child(p)
 		loops[sfx_name] = p
@@ -270,5 +278,6 @@ func toggle_music() -> bool:
 	music_on = not music_on
 	if web:
 		JavaScriptBridge.eval("window.agtMusic && window.agtMusic.mute(%s);" % ("false" if music_on else "true"), true)
-	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), not music_on)
+	if not web:
+		AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), not music_on)
 	return music_on
