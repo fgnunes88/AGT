@@ -7,8 +7,11 @@ extends Node
 ## (uma por quadro de animação). O desenhista é chamado como desenhista.call(ci, quadro).
 
 var cache := {}
-var pending: Array = []     # viewports que ainda vão renderizar
-const PER_FRAME := 8        # quantas imagens criar por quadro (evita engasgos)
+var pending: Array = []     # [viewport, lista de texturas, quadro] que ainda vão renderizar
+var rendering: Array = []   # [viewport, lista, quadro, espera] já renderizando
+var sprites := {}           # textura provisória -> sprites que a usam
+const PER_FRAME := 8
+var headless := DisplayServer.get_name() == "headless"   # testes automáticos (sem placa de vídeo)        # quantas imagens criar por quadro (evita engasgos)
 
 
 class BakeNode extends Node2D:
@@ -46,26 +49,54 @@ func request(key: String, area: Rect2, scale: float, frames: int, drawer: Callab
 		n.position = -area.position * scale
 		vp.add_child(n)
 		add_child(vp)
-		pending.append(vp)
 		texs.append(vp.get_texture())
+		pending.append([vp, texs, f])
 	cache[key] = texs
 	return texs
 
 
 func _process(_delta: float) -> void:
-	# libera alguns viewports por quadro para renderizarem uma única vez
+	# 1) imagens já desenhadas: copia para uma textura simples e apaga o viewport
+	#    (cada viewport guarda buffers na placa de vídeo e o motor o visita todo quadro)
+	var still: Array = []
+	for r in rendering:
+		r[3] -= 1
+		if r[3] > 0:
+			still.append(r)
+			continue
+		var vp: SubViewport = r[0]
+		if headless:
+			continue
+		var img := vp.get_texture().get_image()
+		if img != null and not img.is_empty():
+			var old: Texture2D = r[1][r[2]]
+			var tex := ImageTexture.create_from_image(img)
+			r[1][r[2]] = tex
+			for s in sprites.get(old, []):
+				if is_instance_valid(s) and s.texture == old:
+					s.texture = tex
+			sprites.erase(old)
+			vp.queue_free()
+		# se a cópia falhar, o viewport continua servindo como imagem
+	rendering = still
+	# 2) libera alguns viewports por quadro para renderizarem uma única vez
 	var n := 0
 	while pending.size() > 0 and n < PER_FRAME:
-		var vp: SubViewport = pending.pop_front()
-		if is_instance_valid(vp):
-			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		var it: Array = pending.pop_front()
+		var vp2: SubViewport = it[0]
+		vp2.render_target_update_mode = SubViewport.UPDATE_ONCE
+		rendering.append([vp2, it[1], it[2], 2])
 		n += 1
 
 
 ## Mostra uma textura assada no lugar certo (a área original do desenho).
-static func make_sprite(tex: Texture2D, area: Rect2, scale: float) -> Sprite2D:
+func make_sprite(tex: Texture2D, area: Rect2, scale: float) -> Sprite2D:
 	var s := Sprite2D.new()
 	s.texture = tex
+	if tex is ViewportTexture:
+		if not sprites.has(tex):
+			sprites[tex] = []
+		sprites[tex].append(s)
 	s.centered = false
 	s.position = area.position
 	s.scale = Vector2(1.0 / scale, 1.0 / scale)

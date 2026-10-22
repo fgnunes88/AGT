@@ -132,8 +132,8 @@ static func draw(ci: CanvasItem, o: Vector2, L: float, H: float, dir: float, pat
 	ci.draw_colored_polygon(bel, bcol)
 	# brilho no dorso (reflexo cartoon)
 	var shine := PackedVector2Array()
-	for i in range(8, 18):
-		var u := float(i) / n
+	for i in range(10):
+		var u := lerpf(0.36, 0.78, i / 9.0)   # trecho do dorso (independe da qualidade)
 		shine.append(_pt(o, L, H, dir, -0.45 + u * 0.95, -0.36 * _thick(u)))
 	ci.draw_polyline(shine, Color(1, 1, 1, 0.35), maxf(1.5, H * 0.05), true)
 	_outline(ci, outline_pts, line, lw)

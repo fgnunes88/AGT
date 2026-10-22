@@ -154,7 +154,7 @@ func bake_info(p: Array) -> Array:
 				mn = mn.min(v)
 				mx = mx.max(v)
 			var area := Rect2(mn, mx - mn).grow(75)
-			return ["rock_%d" % p[1], area, 0.7, _rock_drawer(r, _corals_of(p[1]), p[1])]
+			return ["rock_%d" % p[1], area, 0.55, _rock_drawer(r, _corals_of(p[1]), p[1])]
 		"facility":
 			var b: Vector2 = p[1]
 			return ["fac_%d_%d" % [int(b.x), int(b.y)], Rect2(b + Vector2(-160, -1010), Vector2(320, 1020)), 0.6, _fac_drawer(b)]

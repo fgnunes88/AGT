@@ -15,7 +15,7 @@ var lite := false
 var sprite: Sprite2D
 var frames: Array = []
 const PERIOD := TAU / 1.2     # tempo de um balanço completo das algas
-const FRAMES := 8
+const FRAMES := 6
 
 
 func setup(r: Rect2, zone: int, is_lite := false, baker = null) -> void:
@@ -35,8 +35,8 @@ func setup(r: Rect2, zone: int, is_lite := false, baker = null) -> void:
 	if baker != null:
 		# no navegador: as algas viram uma pequena animação de imagens prontas
 		var area := Rect2(r.position.x - 70, r.position.y - 40, r.size.x + 140, r.size.y + 90)
-		frames = baker.request("kelp_%d_%d" % [int(r.position.x), int(r.position.y)], area, 0.6, FRAMES, _make_drawer(r, color, stalks))
-		sprite = baker.make_sprite(frames[0], area, 0.6)
+		frames = baker.request("kelp_%d_%d" % [int(r.position.x), int(r.position.y)], area, 0.5, FRAMES, _make_drawer(r, color, stalks))
+		sprite = baker.make_sprite(frames[0], area, 0.5)
 		add_child(sprite)
 
 

@@ -109,6 +109,8 @@ func _ready() -> void:
 		CullScript.lite = true
 		baker = BakerScript.new()
 		add_child(baker)
+		# desenha sempre em 1280x720 e só amplia na tela (em tela cheia isso é bem mais leve)
+		get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	randomize()
 	_setup_input()
 	_make_light_texture()

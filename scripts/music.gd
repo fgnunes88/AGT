@@ -22,6 +22,48 @@ const FADE_TIME := 1.5
 const MUSIC_DB := -6.0
 const SFX_DB := -2.0
 
+# No navegador a música toca num elemento <audio> do HTML: assim ela não depende
+# do ritmo do jogo e não sai picotada quando um quadro demora.
+const JS_INIT := """
+(function(){
+if (window.agtMusic) return;
+var a = new Audio(); a.loop = true; a.preload = 'auto'; a.volume = 0;
+var M = {a:a, vol:0.5, muted:false, want:null, timer:null, unlocked:false};
+function fade(to, ms, done){
+  clearInterval(M.timer); var from = a.volume, t0 = Date.now();
+  M.timer = setInterval(function(){
+    var k = Math.min(1, (Date.now()-t0)/ms);
+    a.volume = Math.max(0, Math.min(1, from + (to-from)*k));
+    if (k >= 1){ clearInterval(M.timer); if (done) done(); }
+  }, 40);
+}
+function start(urls, i){
+  if (i >= urls.length) return;
+  a.onerror = function(){ start(urls, i+1); };
+  a.src = urls[i]; a.currentTime = 0; a.volume = 0;
+  var pr = a.play();
+  if (pr && pr.catch) pr.catch(function(){});
+  fade(M.muted ? 0 : M.vol, 800);
+}
+M.play = function(urls){
+  M.want = urls;
+  if (!a.paused && a.volume > 0.01){ fade(0, 400, function(){ a.pause(); start(urls, 0); }); }
+  else { a.pause(); start(urls, 0); }
+};
+M.stop = function(){ M.want = null; fade(0, 600, function(){ a.pause(); }); };
+M.mute = function(x){ M.muted = x; fade(x ? 0 : M.vol, 300); };
+function unlock(){
+  if (M.unlocked) return; M.unlocked = true;
+  if (M.want && a.paused){ start(M.want, 0); }
+}
+['pointerdown','touchstart','keydown','mousedown'].forEach(function(e){
+  document.addEventListener(e, unlock, true);
+});
+window.agtMusic = M;
+})();
+"""
+var web := false
+
 var players: Array[AudioStreamPlayer] = []
 var active := 0
 var current := ""
@@ -39,6 +81,9 @@ const MIN_GAP := {"alerta": 1.5, "suspeita": 1.5, "sonar_onda": 0.5, "menu_mover
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	web = OS.has_feature("web")
+	if web:
+		JavaScriptBridge.eval(JS_INIT, true)
 	_ensure_bus("Music")
 	_ensure_bus("SFX")
 	for i in 2:
@@ -119,6 +164,9 @@ func play(track: String) -> void:
 	if track == current:
 		return
 	current = track
+	if web:
+		_web_play(track)
+		return
 	var s := _music_stream(track)
 	var old := players[active]
 	if s != null and old.stream == s and old.playing:
@@ -135,8 +183,23 @@ func play(track: String) -> void:
 	_fade(p, MUSIC_DB, false)
 
 
+func _web_play(track: String) -> void:
+	var urls: Array = []
+	var tname := track
+	var tries := 0
+	while tname != "" and tries < 4:
+		urls.append("music/" + tname + ".mp3")
+		urls.append("music/" + tname + ".ogg")
+		tname = FALLBACK.get(tname, "")
+		tries += 1
+	JavaScriptBridge.eval("window.agtMusic && window.agtMusic.play(" + JSON.stringify(urls) + ");", true)
+
+
 func stop() -> void:
 	current = ""
+	if web:
+		JavaScriptBridge.eval("window.agtMusic && window.agtMusic.stop();", true)
+		return
 	for p in players:
 		_fade(p, -80.0, true)
 
@@ -205,5 +268,7 @@ func stop_loops() -> void:
 ## Liga/desliga só a música (as vinhetas continuam)
 func toggle_music() -> bool:
 	music_on = not music_on
+	if web:
+		JavaScriptBridge.eval("window.agtMusic && window.agtMusic.mute(%s);" % ("false" if music_on else "true"), true)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), not music_on)
 	return music_on
