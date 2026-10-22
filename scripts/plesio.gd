@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Dinossauros marinhos pacíficos do Santuário Perdido.
 
 const Art = preload("res://scripts/shark_art.gd")
@@ -27,7 +28,8 @@ func _process(delta: float) -> void:
 		dir = -1.0
 	elif position.x < x_range.x:
 		dir = 1.0
-	queue_redraw()
+	if Cull.near(self, 400.0):
+		queue_redraw()
 
 
 func _draw() -> void:

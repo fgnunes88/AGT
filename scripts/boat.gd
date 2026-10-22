@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Barco pesqueiro ilegal do Sindicato (inimigo da superfície).
 ## Navega de um lado para o outro e varre o mar com um holofote.
 ## Se o holofote encontrar o Manta por tempo demais, baixa uma GARRA para apanhá-lo.
@@ -139,7 +140,8 @@ func _process(delta: float) -> void:
 			claw = claw.move_toward(_hook(), CLAW_SPEED * delta)
 			if timer <= 0.0:
 				state = State.PATROL
-	queue_redraw()
+	if Cull.near(self, 800.0):
+		queue_redraw()
 
 
 func _draw() -> void:

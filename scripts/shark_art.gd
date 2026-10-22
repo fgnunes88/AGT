@@ -5,6 +5,7 @@ extends RefCounted
 ## Sempre chamar dentro do _draw() do CanvasItem "ci".
 
 static var _t := 0.0
+static var segments := 22   # qualidade do contorno (menos no navegador)
 static var _swim := 1.0
 
 
@@ -81,7 +82,7 @@ static func draw(ci: CanvasItem, o: Vector2, L: float, H: float, dir: float, pat
 	_fin(ci, o, L, H, dir, [[-0.27, 0.18], [-0.33, 0.36], [-0.37, 0.13]], col.darkened(0.12), line, lw * 0.8)
 
 	# --- corpo suave com sombreado (dorso mais escuro, barriga clara) ---
-	var n := 22
+	var n := segments
 	var up := PackedVector2Array()
 	var down := PackedVector2Array()
 	for i in range(n + 1):

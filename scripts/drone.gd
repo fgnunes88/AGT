@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Drone de patrulha (inimigo). Sistema de alerta inspirado em Metal Gear Solid:
 ## PATRULHA -> SUSPEITO (?) -> ALERTA (!) -> BUSCA -> volta a patrulhar.
 ## Não machuca: se apanhar o Manta, Arthur volta ao último ponto seguro.
@@ -71,7 +72,8 @@ func _process(delta: float) -> void:
 		position.y += sin(t * 3.0) * 0.3
 		if timer <= 0.0:
 			state = State.PATROL
-		queue_redraw()
+		if Cull.near(self, 420.0):
+			queue_redraw()
 		return
 
 	# --- sentido de proximidade e visão ---
@@ -141,7 +143,8 @@ func _process(delta: float) -> void:
 			look_angle = sin(t * 3.0) * deg_to_rad(45.0)
 			if position.distance_to(last_seen) < 10.0 and fmod(t, 2.0) < delta:
 				facing = -facing
-	queue_redraw()
+	if Cull.near(self, 420.0):
+		queue_redraw()
 
 
 func _go_alert() -> void:

@@ -24,6 +24,7 @@ const CatalogScript = preload("res://scripts/catalog.gd")
 const EndingScript = preload("res://scripts/ending.gd")
 const MusicScript = preload("res://scripts/music.gd")
 const TouchScript = preload("res://scripts/touch.gd")
+const ArtScript = preload("res://scripts/shark_art.gd")
 const BoatScript = preload("res://scripts/boat.gd")
 const DartScript = preload("res://scripts/dart.gd")
 const BuoyScript = preload("res://scripts/sonar_buoy.gd")
@@ -38,6 +39,8 @@ const NET_RANGE := 160.0
 const EMP_RANGE := 380.0
 
 var state := GameState.TITLE
+var lite := false            # modo leve (navegador/celular): menos luzes e detalhes
+var fps_timer := 0.0
 var light_tex: GradientTexture2D
 var music: Node
 var danger_hold := 0.0      # mantém a música de perigo uns segundos após o alerta
@@ -96,6 +99,10 @@ var throttle := {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	lite = OS.has_feature("web") or OS.has_feature("mobile") or "--lite" in OS.get_cmdline_user_args()
+	if lite:
+		Engine.max_fps = 60
+		ArtScript.segments = 14
 	randomize()
 	_setup_input()
 	_make_light_texture()
@@ -332,7 +339,7 @@ func _build_world() -> void:
 
 	for r in Data.KELP:
 		var k := KelpScript.new()
-		k.setup(r, Data.zone_of(r.position.y + 10))
+		k.setup(r, Data.zone_of(r.position.y + 10), lite)
 		world.add_child(k)
 		kelps.append(k)
 
@@ -359,12 +366,12 @@ func _build_world() -> void:
 		var z: int = sp["zone"]
 		for n in Data.SPAWNS[id]:
 			var s := SharkScript.new()
-			s.setup(id, Vector2(randf_range(400, Data.WORLD_W - 400), randf_range(z * Data.ZONE_H + 150, (z + 1) * Data.ZONE_H - 150)), light_tex, self)
+			s.setup(id, Vector2(randf_range(400, Data.WORLD_W - 400), randf_range(z * Data.ZONE_H + 150, (z + 1) * Data.ZONE_H - 150)), null if lite else light_tex, self)
 			sharks_node.add_child(s)
 
 	for n in Data.NETS:
 		var s := SharkScript.new()
-		s.setup(n[1], n[0], light_tex, self)
+		s.setup(n[1], n[0], null if lite else light_tex, self)
 		s.trapped = true
 		sharks_node.add_child(s)
 		var net := NetScript.new()
@@ -480,6 +487,11 @@ func _close_catalog() -> void:
 
 
 func _process(delta: float) -> void:
+	if lite:
+		fps_timer += delta
+		if fps_timer > 5.0:
+			fps_timer = 0.0
+			print("FPS: ", Engine.get_frames_per_second())
 	if state != GameState.PLAY and state != GameState.CUTSCENE or player == null:
 		music.stop_loops()
 	if not playing() or player == null:

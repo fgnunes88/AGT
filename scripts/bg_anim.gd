@@ -21,6 +21,7 @@ func setup(m, light_tex: Texture2D) -> void:
 		l.color = Color(1.0, 0.55, 0.2)
 		l.energy = 0.9
 		l.position = v + Vector2(0, -60)
+		l.enabled = not m.lite
 		add_child(l)
 
 

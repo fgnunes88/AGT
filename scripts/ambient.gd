@@ -19,11 +19,12 @@ func setup(m, light_tex: Texture2D) -> void:
 	rng.seed = 4242
 	var palettes := [[Color(1.0, 0.85, 0.2), Color(0.2, 0.4, 0.9)], [Color(1.0, 0.55, 0.15), Color(1, 1, 1)],
 		[Color(0.25, 0.5, 1.0), Color(1.0, 0.9, 0.2)], [Color(0.75, 0.85, 0.95), Color(0.4, 0.55, 0.7)]]
-	for i in range(14):
+	var lite: bool = m.lite
+	for i in range(8 if lite else 14):
 		var z := i % 3
 		var pal: Array = palettes[rng.randi() % palettes.size()] if z < 2 else [Color(0.6, 0.7, 0.9), Color(0.3, 0.9, 1.0)]
 		var offs: Array = []
-		var n := rng.randi_range(7, 13)
+		var n := rng.randi_range(5, 8) if lite else rng.randi_range(7, 13)
 		for k in range(n):
 			offs.append(Vector3(rng.randf_range(-70, 70), rng.randf_range(-40, 40), rng.randf() * TAU))
 		var p := Vector2(rng.randf_range(300, Data.WORLD_W - 300), z * Data.ZONE_H + rng.randf_range(150, 850))
@@ -36,6 +37,7 @@ func setup(m, light_tex: Texture2D) -> void:
 		l.texture_scale = 0.7
 		l.color = col
 		l.energy = 0.0 if z == 1 else 0.8
+		l.enabled = z != 1 and not lite   # luzes 2D pesam no navegador
 		add_child(l)
 		jellies.append({"pos": Vector2(rng.randf_range(300, Data.WORLD_W - 300), z * Data.ZONE_H + rng.randf_range(150, 850)),
 			"phase": rng.randf() * TAU, "col": col, "light": l, "zone": z})
@@ -45,6 +47,7 @@ func setup(m, light_tex: Texture2D) -> void:
 		l.texture_scale = 0.8
 		l.color = Color(0.6, 1.0, 0.8)
 		l.energy = 1.0
+		l.enabled = not lite
 		add_child(l)
 		var x0 := 600.0 + i * 1500.0
 		anglers.append({"pos": Vector2(x0 + 300, 3300 + i * 130), "dir": 1.0, "light": l, "x0": x0, "x1": x0 + 900})

@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Um tubarão que nada livremente dentro da sua zona.
 ## Cada espécie tem a sua velocidade de cruzeiro e de fuga (o Mako é o mais rápido de todos).
 ## Se o Manta chegar perto depressa demais, o tubarão se assusta e foge.
@@ -33,7 +34,7 @@ func setup(id: int, pos: Vector2, light_tex: Texture2D, m = null) -> void:
 	area = Rect2(150, z * Data.ZONE_H + 90, Data.WORLD_W - 300, Data.ZONE_H - 180)
 	target = _random_target()
 	t = randf() * 10.0
-	if sp["pattern"] == "lantern":
+	if sp["pattern"] == "lantern" and light_tex != null:
 		glow = PointLight2D.new()
 		glow.texture = light_tex
 		glow.texture_scale = 0.6
@@ -91,7 +92,8 @@ func _process(delta: float) -> void:
 	t += delta
 	if trapped:
 		t += delta * 2.0  # se debate mais rápido
-		queue_redraw()
+		if Cull.near(self, 300.0):
+			queue_redraw()
 		return
 	# percebe o Manta chegando depressa
 	if main and main.player != null and flee_t <= 0.0:
@@ -112,7 +114,8 @@ func _process(delta: float) -> void:
 	if absf(velocity.x) > 5.0:
 		dir = signf(velocity.x)
 	rotation = clampf(velocity.y / maxf(speed, 1.0), -0.4, 0.4) * dir
-	queue_redraw()
+	if Cull.near(self, 300.0):
+		queue_redraw()
 
 
 func _draw() -> void:

@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Coletáveis: peças da Corporação ("part") e gravações do pai ("log").
 
 var kind := "part"
@@ -17,7 +18,8 @@ func setup(k: String, pos: Vector2, z: int, txt := "") -> void:
 
 func _process(delta: float) -> void:
 	t += delta
-	queue_redraw()
+	if Cull.near(self, 150.0):
+		queue_redraw()
 
 
 func _draw() -> void:

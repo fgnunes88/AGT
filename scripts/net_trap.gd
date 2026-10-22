@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Rede ou gaiola ilegal com um tubarão preso. Segure E perto dela para soltar.
 
 var shark: Node2D
@@ -18,7 +19,8 @@ func _process(delta: float) -> void:
 	t += delta
 	if shark and not freed:
 		shark.position = position + Vector2(sin(t * 3.0) * 6.0, cos(t * 2.0) * 3.0)
-	queue_redraw()
+	if Cull.near(self, 300.0):
+		queue_redraw()
 
 
 func _draw() -> void:

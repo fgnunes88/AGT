@@ -8,7 +8,11 @@ var t := 0.0
 var stalks: Array = []   # [x, altura, fase, camada]
 
 
-func setup(r: Rect2, zone: int) -> void:
+var lite := false
+
+
+func setup(r: Rect2, zone: int, is_lite := false) -> void:
+	lite = is_lite
 	rect = r
 	match zone:
 		0: color = Color(0.30, 0.82, 0.32)
@@ -16,7 +20,7 @@ func setup(r: Rect2, zone: int) -> void:
 		2: color = Color(0.72, 0.35, 1.0)      # algas neon da penumbra
 		_: color = Color(0.2, 0.9, 0.9)
 	var n := int(r.size.x / 26.0)
-	for layer in range(2):
+	for layer in range(1 if lite else 2):
 		for i in range(n):
 			stalks.append([r.position.x + 12 + i * 26 + randf_range(-8, 8) + layer * 13, r.size.y * randf_range(0.75, 1.02), randf() * TAU, layer])
 
@@ -29,6 +33,8 @@ func _process(delta: float) -> void:
 	t += delta
 	# só anima quando está perto da câmera (economiza processamento)
 	var cam := get_viewport().get_camera_2d()
+	if lite and Engine.get_process_frames() % 2 == 1:
+		return
 	if cam == null or rect.grow(900).has_point(cam.get_screen_center_position()):
 		queue_redraw()
 

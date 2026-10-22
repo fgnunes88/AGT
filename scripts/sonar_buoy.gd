@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Boia-sonar da Corporação (inimigo parado, zonas profundas).
 ## A cada poucos segundos solta uma onda de sonar. Se a onda acertar o Manta fora
 ## das algas, a boia chama os drones próximos. A luz pisca mais rápido antes de cada onda,
@@ -52,7 +53,8 @@ func _process(delta: float) -> void:
 	alarm = maxf(0.0, alarm - delta)
 	if stunned > 0.0:
 		stunned -= delta
-		queue_redraw()
+		if Cull.near(self, 520.0):
+			queue_redraw()
 		return
 	cycle += delta
 	if cycle >= PERIOD:
@@ -71,7 +73,8 @@ func _process(delta: float) -> void:
 			main.sonar_alarm(main.player.global_position, CALL_RADIUS)
 		if ring > RING_MAX:
 			ring = -1.0
-	queue_redraw()
+	if Cull.near(self, 520.0):
+		queue_redraw()
 
 
 func _draw() -> void:

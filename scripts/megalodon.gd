@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## O Megalodon: a lenda das histórias de Philip Blake.
 
 const Data = preload("res://scripts/data.gd")
@@ -71,7 +72,8 @@ func _process(delta: float) -> void:
 			if position.distance_to(target) < 80.0:
 				target = Vector2(randf_range(wander.position.x, wander.end.x), randf_range(wander.position.y, wander.end.y))
 			_move_to(target, 70.0, delta)
-	queue_redraw()
+	if Cull.near(self, 900.0):
+		queue_redraw()
 
 
 func _move_to(p: Vector2, speed: float, delta: float) -> void:

@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## A megabase branca e fria da Corporação, no fundo da Fossa das Marianas.
 
 enum State { INTACT, ALARM, WRECKED }
@@ -47,7 +48,8 @@ func _process(delta: float) -> void:
 			light.energy = lerpf(light.energy, 0.15, delta)
 			light.color = Color(1.0, 0.3, 0.2)
 			rotation = lerpf(rotation, 0.12, delta * 0.5)
-	queue_redraw()
+	if Cull.near(self, 700.0):
+		queue_redraw()
 
 
 func _draw() -> void:

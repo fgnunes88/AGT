@@ -75,6 +75,9 @@ func _process(delta: float) -> void:
 	light.energy = lerpf(light.energy, target_energy, delta * 2.0)
 	glow.energy = lerpf(glow.energy, clampf((position.y - 1200.0) / 1500.0, 0.0, 1.0) * 1.1, delta * 2.0)
 	glow.position = Vector2(-50 * facing, 8)
+	# luz apagada não deve custar nada (luzes 2D pesam muito no navegador)
+	light.enabled = light.energy > 0.03
+	glow.enabled = glow.energy > 0.03 and not main.lite
 
 	# bolhas do propulsor
 	if velocity.length() > 40.0 and randf() < 0.5:

@@ -45,6 +45,9 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Music"
 		p.volume_db = -80.0
+		# No navegador, "sample" decodifica a música inteira de uma vez (lento e pesado).
+		# Em modo "stream" ela é lida aos poucos, como no PC.
+		p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 		add_child(p)
 		players.append(p)
 	for i in 4:
