@@ -72,7 +72,7 @@ func _process(delta: float) -> void:
 			if position.distance_to(target) < 80.0:
 				target = Vector2(randf_range(wander.position.x, wander.end.x), randf_range(wander.position.y, wander.end.y))
 			_move_to(target, 70.0, delta)
-	if Cull.near(self, 900.0):
+	if Cull.near(self, 900.0) and Cull.tick(self, 2):
 		queue_redraw()
 
 

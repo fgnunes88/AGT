@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Vida marinha de enfeite (não interage com o jogo, só deixa o mar mais vivo):
 ## cardumes de peixinhos, tartarugas, águas-vivas brilhantes e peixes-diabo com lanterna.
 ## Os cardumes fogem quando o Manta chega perto.
@@ -106,7 +107,8 @@ func _process(delta: float) -> void:
 		elif tp.x < tu["x0"]:
 			tu["dir"] = 1.0
 		tu["pos"] = tp
-	queue_redraw()
+	if Cull.tick(self, 2):
+		queue_redraw()
 
 
 func _draw() -> void:

@@ -140,7 +140,7 @@ func _process(delta: float) -> void:
 			claw = claw.move_toward(_hook(), CLAW_SPEED * delta)
 			if timer <= 0.0:
 				state = State.PATROL
-	if Cull.near(self, 800.0):
+	if Cull.near(self, 800.0) and Cull.tick(self, 2):
 		queue_redraw()
 
 

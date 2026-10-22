@@ -53,7 +53,7 @@ func _process(delta: float) -> void:
 	alarm = maxf(0.0, alarm - delta)
 	if stunned > 0.0:
 		stunned -= delta
-		if Cull.near(self, 520.0):
+		if Cull.near(self, 520.0) and Cull.tick(self, 2):
 			queue_redraw()
 		return
 	cycle += delta
@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 			main.sonar_alarm(main.player.global_position, CALL_RADIUS)
 		if ring > RING_MAX:
 			ring = -1.0
-	if Cull.near(self, 520.0):
+	if Cull.near(self, 520.0) and Cull.tick(self, 2):
 		queue_redraw()
 
 

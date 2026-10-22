@@ -23,6 +23,12 @@ var catalogued := false   # a espécie já está no catálogo
 var chipped := false      # ESTE tubarão já recebeu o chip de proteção
 var flee_t := 0.0
 var glow: PointLight2D
+var anim_t := 0.0
+var holder: Node2D          # no navegador: imagem pronta do tubarão (vira para os dois lados)
+var sprite: Sprite2D
+var frames: Array = []
+const SWIM_PERIOD := TAU / 6.0   # um ciclo completo do nado
+const FRAMES := 6
 
 
 func setup(id: int, pos: Vector2, light_tex: Texture2D, m = null) -> void:
@@ -41,6 +47,21 @@ func setup(id: int, pos: Vector2, light_tex: Texture2D, m = null) -> void:
 		glow.color = Color(0.4, 1.0, 1.0)
 		glow.energy = 0.9
 		add_child(glow)
+	if m != null and m.baker != null:
+		var L: float = sp["len"]
+		var H: float = sp["h"]
+		var area_d := Rect2(-L * 1.25, -H * 1.2, L * 2.2, H * 2.3)
+		frames = m.baker.request("shark_%d" % id, area_d, 1.0, FRAMES, _make_drawer(sp))
+		holder = Node2D.new()
+		holder.show_behind_parent = true   # a etiqueta do chip fica por cima
+		add_child(holder)
+		sprite = m.baker.make_sprite(frames[0], area_d, 1.0)
+		holder.add_child(sprite)
+
+
+static func _make_drawer(spd: Dictionary) -> Callable:
+	return func(ci: CanvasItem, f: int) -> void:
+		Art.draw(ci, Vector2.ZERO, spd["len"], spd["h"], 1.0, spd["pattern"], spd["body"], spd["belly"], f * SWIM_PERIOD / FRAMES)
 
 
 func _random_target() -> Vector2:
@@ -88,11 +109,19 @@ func scare(from: Vector2) -> void:
 		main.on_shark_scared()
 
 
+func _update_sprite(delta: float) -> void:
+	anim_t += delta * (1.6 if flee_t > 0.0 else 1.0) * (3.0 if trapped else 1.0)
+	holder.scale.x = dir
+	sprite.texture = frames[int(fposmod(anim_t, SWIM_PERIOD) / SWIM_PERIOD * FRAMES) % FRAMES]
+
+
 func _process(delta: float) -> void:
 	t += delta
+	if sprite != null:
+		_update_sprite(delta)
 	if trapped:
 		t += delta * 2.0  # se debate mais rápido
-		if Cull.near(self, 300.0):
+		if Cull.near(self, 300.0) and Cull.tick(self, 3):
 			queue_redraw()
 		return
 	# percebe o Manta chegando depressa
@@ -114,12 +143,13 @@ func _process(delta: float) -> void:
 	if absf(velocity.x) > 5.0:
 		dir = signf(velocity.x)
 	rotation = clampf(velocity.y / maxf(speed, 1.0), -0.4, 0.4) * dir
-	if Cull.near(self, 300.0):
+	if Cull.near(self, 300.0) and Cull.tick(self, 3):
 		queue_redraw()
 
 
 func _draw() -> void:
-	Art.draw(self, Vector2.ZERO, sp["len"], sp["h"], dir, sp["pattern"], sp["body"], sp["belly"], t * (1.6 if flee_t > 0.0 else 1.0))
+	if sprite == null:
+		Art.draw(self, Vector2.ZERO, sp["len"], sp["h"], dir, sp["pattern"], sp["body"], sp["belly"], t * (1.6 if flee_t > 0.0 else 1.0))
 	if chipped:
 		# etiqueta verde do chip de proteção presa na barbatana
 		var p := Vector2(-float(sp["len"]) * 0.05 * dir, -float(sp["h"]) * 0.8)

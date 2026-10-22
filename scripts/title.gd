@@ -1,4 +1,5 @@
 extends Control
+const Cull = preload("res://scripts/cull.gd")
 ## Tela inicial "Linha d'água": metade céu com o navio, metade mar com um tubarão.
 
 const Art = preload("res://scripts/shark_art.gd")
@@ -25,7 +26,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	t += delta
 	shown += delta
-	queue_redraw()
+	if Cull.tick(self, 2):
+		queue_redraw()
 
 
 func _option_rect(i: int) -> Rect2:

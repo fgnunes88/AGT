@@ -25,6 +25,8 @@ const EndingScript = preload("res://scripts/ending.gd")
 const MusicScript = preload("res://scripts/music.gd")
 const TouchScript = preload("res://scripts/touch.gd")
 const ArtScript = preload("res://scripts/shark_art.gd")
+const CullScript = preload("res://scripts/cull.gd")
+const BakerScript = preload("res://scripts/baker.gd")
 const BoatScript = preload("res://scripts/boat.gd")
 const DartScript = preload("res://scripts/dart.gd")
 const BuoyScript = preload("res://scripts/sonar_buoy.gd")
@@ -41,6 +43,7 @@ const EMP_RANGE := 380.0
 var state := GameState.TITLE
 var lite := false            # modo leve (navegador/celular): menos luzes e detalhes
 var fps_timer := 0.0
+var baker = null             # transforma desenhos complexos em imagens prontas (modo leve)
 var light_tex: GradientTexture2D
 var music: Node
 var danger_hold := 0.0      # mantém a música de perigo uns segundos após o alerta
@@ -103,6 +106,9 @@ func _ready() -> void:
 	if lite:
 		Engine.max_fps = 60
 		ArtScript.segments = 14
+		CullScript.lite = true
+		baker = BakerScript.new()
+		add_child(baker)
 	randomize()
 	_setup_input()
 	_make_light_texture()
@@ -328,7 +334,7 @@ func _build_world() -> void:
 	para.setup(self)
 	world.add_child(para)
 	var decor := BgScript.new()
-	decor.setup("decor")
+	decor.setup("decor", baker)
 	world.add_child(decor)
 	var anim := BgAnimScript.new()
 	anim.setup(self, light_tex)
@@ -339,7 +345,7 @@ func _build_world() -> void:
 
 	for r in Data.KELP:
 		var k := KelpScript.new()
-		k.setup(r, Data.zone_of(r.position.y + 10), lite)
+		k.setup(r, Data.zone_of(r.position.y + 10), lite, baker)
 		world.add_child(k)
 		kelps.append(k)
 

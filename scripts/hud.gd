@@ -1,4 +1,5 @@
 extends Control
+const Cull = preload("res://scripts/cull.gd")
 ## Interface na tela (HUD): profundidade, contadores, alerta, mensagens e fichas.
 
 const Data = preload("res://scripts/data.gd")
@@ -61,7 +62,8 @@ func _process(delta: float) -> void:
 		card_time -= delta
 		if card_time <= 0.0:
 			card_id = -1
-	queue_redraw()
+	if Cull.tick(self, 3):
+		queue_redraw()
 
 
 func _text(pos: Vector2, s: String, size := 20, col := Color.WHITE, width := -1.0, align := HORIZONTAL_ALIGNMENT_LEFT) -> void:

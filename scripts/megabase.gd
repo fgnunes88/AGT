@@ -48,7 +48,7 @@ func _process(delta: float) -> void:
 			light.energy = lerpf(light.energy, 0.15, delta)
 			light.color = Color(1.0, 0.3, 0.2)
 			rotation = lerpf(rotation, 0.12, delta * 0.5)
-	if Cull.near(self, 700.0):
+	if Cull.near(self, 700.0) and Cull.tick(self, 3):
 		queue_redraw()
 
 

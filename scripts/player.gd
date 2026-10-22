@@ -94,7 +94,8 @@ func _draw() -> void:
 	# bolhas (em coordenadas do mundo -> locais)
 	var inv := global_transform.affine_inverse()
 	for b in bubbles:
-		draw_circle(inv * b[0], 3.0 + (1.0 - b[1]) * 3.0, Color(1, 1, 1, 0.35 * b[1]))
+		var br: float = 3.0 + (1.0 - b[1]) * 3.0
+		draw_rect(Rect2(inv * b[0] - Vector2(br, br), Vector2(br, br) * 2.0), Color(1, 1, 1, 0.3 * b[1]))
 	if blink > 0.0 and int(blink * 10.0) % 2 == 0:
 		return
 	_draw_sub(facing)

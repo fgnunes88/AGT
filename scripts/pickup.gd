@@ -18,7 +18,7 @@ func setup(k: String, pos: Vector2, z: int, txt := "") -> void:
 
 func _process(delta: float) -> void:
 	t += delta
-	if Cull.near(self, 150.0):
+	if Cull.near(self, 150.0) and Cull.tick(self, 3):
 		queue_redraw()
 
 

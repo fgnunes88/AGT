@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Camada de fundo distante que anda mais devagar que a câmera (parallax horizontal).
 ## Mostra a história do mundo: ruínas afundadas, um navio naufragado,
 ## o esqueleto de uma baleia com marcas de mordida gigante (pista do Megalodon!).
@@ -42,7 +43,8 @@ func _process(_delta: float) -> void:
 		return
 	var cam: Vector2 = main.camera.get_screen_center_position()
 	position.x = cam.x * FACTOR
-	queue_redraw()
+	if Cull.tick(self, 8):
+		queue_redraw()
 
 
 ## cor de "neblina" da água naquela profundidade (objetos distantes quase somem na água)

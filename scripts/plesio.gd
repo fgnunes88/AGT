@@ -28,7 +28,7 @@ func _process(delta: float) -> void:
 		dir = -1.0
 	elif position.x < x_range.x:
 		dir = 1.0
-	if Cull.near(self, 400.0):
+	if Cull.near(self, 400.0) and Cull.tick(self, 3):
 		queue_redraw()
 
 

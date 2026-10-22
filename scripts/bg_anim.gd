@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Cenário animado, desenhado só perto da câmera:
 ## navio de Arthur, ondas, superfície vista de baixo, luz cáustica,
 ## fontes hidrotermais da fossa e algas douradas do santuário.
@@ -34,7 +35,8 @@ func _process(delta: float) -> void:
 	for b in bubbles:
 		b[0] += Vector2(sin(t * 3.0 + b[2]) * 20.0, -b[1]) * delta
 	bubbles = bubbles.filter(func(b): return b[0].y > 3100.0)
-	queue_redraw()
+	if Cull.tick(self, 2):
+		queue_redraw()
 
 
 func _draw() -> void:

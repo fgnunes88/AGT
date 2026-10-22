@@ -12,3 +12,14 @@ static func near(n: Node2D, margin := 300.0) -> bool:
 	var half := vp.get_visible_rect().size * 0.5 / cam.zoom
 	var p := n.global_position
 	return absf(p.x - c.x) < half.x + margin and absf(p.y - c.y) < half.y + margin
+
+
+## Modo leve (navegador/celular): animações decorativas redesenham menos vezes por segundo.
+static var lite := false
+
+
+## Verdadeiro uma vez a cada "every" quadros (espalhado entre os objetos para não pesar tudo junto).
+static func tick(n: Object, every: int) -> bool:
+	if not lite or every <= 1:
+		return true
+	return (Engine.get_process_frames() + n.get_instance_id()) % every == 0

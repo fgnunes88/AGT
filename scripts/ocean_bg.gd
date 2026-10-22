@@ -13,12 +13,14 @@ const PieceScript = preload("res://scripts/decor_piece.gd")
 const FACILITIES := [Vector2(2600, 1960), Vector2(5500, 1960), Vector2(3900, 2960), Vector2(2600, 2960)]
 
 var layer := "water"
+var baker = null
 var rocks: Array = []     # [Vector2 topo, largura, zona, pontos do contorno]
 var corals: Array = []    # [pos, tipo, cor, escala, zona]
 
 
-func setup(which: String) -> void:
+func setup(which: String, b = null) -> void:
 	layer = which
+	baker = b
 
 
 func _ready() -> void:
@@ -125,15 +127,58 @@ func _draw_decor() -> void:
 func draw_piece(ci: CanvasItem, p: Array) -> void:
 	match p[0]:
 		"rock":
-			_draw_rock(ci, p[1])
+			_draw_rock(ci, rocks[p[1]], _corals_of(p[1]), p[1])
 		"facility":
 			_draw_facility(ci, p[1])
 		"floors":
 			_draw_floors(ci)
 
 
-func _draw_rock(ci: CanvasItem, idx: int) -> void:
-	var r: Array = rocks[idx]
+func _corals_of(idx: int) -> Array:
+	var out: Array = []
+	for c in corals:
+		if c[5] == idx:
+			out.append(c)
+	return out
+
+
+## Área, escala e desenhista para "assar" um pedaço do cenário numa imagem (modo leve).
+func bake_info(p: Array) -> Array:
+	match p[0]:
+		"rock":
+			var r: Array = rocks[p[1]]
+			var pts: PackedVector2Array = r[3]
+			var mn := Vector2(INF, INF)
+			var mx := Vector2(-INF, -INF)
+			for v in pts:
+				mn = mn.min(v)
+				mx = mx.max(v)
+			var area := Rect2(mn, mx - mn).grow(75)
+			return ["rock_%d" % p[1], area, 0.7, _rock_drawer(r, _corals_of(p[1]), p[1])]
+		"facility":
+			var b: Vector2 = p[1]
+			return ["fac_%d_%d" % [int(b.x), int(b.y)], Rect2(b + Vector2(-160, -1010), Vector2(320, 1020)), 0.6, _fac_drawer(b)]
+		"floors":
+			return ["floors", Rect2(-400, 3980, Data.WORLD_W + 800, 1120), 0.5, _floors_drawer()]
+	return []
+
+
+static func _rock_drawer(r: Array, rc: Array, idx: int) -> Callable:
+	return func(ci: CanvasItem, _f: int) -> void:
+		_draw_rock(ci, r, rc, idx)
+
+
+static func _fac_drawer(b: Vector2) -> Callable:
+	return func(ci: CanvasItem, _f: int) -> void:
+		_draw_facility(ci, b)
+
+
+static func _floors_drawer() -> Callable:
+	return func(ci: CanvasItem, _f: int) -> void:
+		_draw_floors(ci)
+
+
+static func _draw_rock(ci: CanvasItem, r: Array, rock_corals: Array, idx: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77 + idx
 	var top: Vector2 = r[0]
@@ -172,12 +217,11 @@ func _draw_rock(ci: CanvasItem, idx: int) -> void:
 		for i in range(2, 10):
 			ci.draw_circle(pts[i] + Vector2(0, 3), rng.randf_range(6, 11), Color(0.35, 0.7, 0.35, 0.8))
 	# corais desta rocha
-	for c in corals:
-		if c[5] == idx:
-			Art.draw_coral(ci, c[0], c[1], c[2], c[3])
+	for c in rock_corals:
+		Art.draw_coral(ci, c[0], c[1], c[2], c[3])
 
 
-func _draw_floors(ci: CanvasItem) -> void:
+static func _draw_floors(ci: CanvasItem) -> void:
 	var W := Data.WORLD_W
 	# fundo da fossa com a fenda secreta
 	var floor_y := 4.0 * Data.ZONE_H
@@ -198,7 +242,7 @@ func _draw_floors(ci: CanvasItem) -> void:
 		ci.draw_circle(Vector2(sx, Data.SANCTUARY_BOTTOM + 18 + (i % 4) * 9), 6, Color(1.0, 0.85, 0.85))
 
 
-func _draw_floor(ci: CanvasItem, r: Rect2, col: Color) -> void:
+static func _draw_floor(ci: CanvasItem, r: Rect2, col: Color) -> void:
 	ci.draw_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]),
 		PackedColorArray([col.lightened(0.15), col.lightened(0.15), col.darkened(0.3), col.darkened(0.3)]))
 	var x := r.position.x
@@ -211,7 +255,7 @@ func _draw_floor(ci: CanvasItem, r: Rect2, col: Color) -> void:
 		ci.draw_circle(Vector2(r.position.x + 60 + i * 120, r.position.y + 30 + (i % 3) * 25), 12 + (i % 4) * 4, col.lightened(0.08))
 
 
-func _draw_facility(ci: CanvasItem, b: Vector2) -> void:
+static func _draw_facility(ci: CanvasItem, b: Vector2) -> void:
 	var white := Color(0.93, 0.96, 1.0)
 	var shade := Color(0.72, 0.78, 0.88)
 	var line := Color(0.35, 0.45, 0.6)

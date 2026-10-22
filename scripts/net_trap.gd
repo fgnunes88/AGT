@@ -19,7 +19,7 @@ func _process(delta: float) -> void:
 	t += delta
 	if shark and not freed:
 		shark.position = position + Vector2(sin(t * 3.0) * 6.0, cos(t * 2.0) * 3.0)
-	if Cull.near(self, 300.0):
+	if Cull.near(self, 300.0) and Cull.tick(self, 3):
 		queue_redraw()
 
 

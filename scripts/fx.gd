@@ -1,4 +1,5 @@
 extends Node2D
+const Cull = preload("res://scripts/cull.gd")
 ## Efeitos desenhados a cada quadro: raios de sol, neve marinha, limite de pressão,
 ## feixe do scanner e pulsos EMP.
 
@@ -25,7 +26,8 @@ func _process(delta: float) -> void:
 		r[1] += 700.0 * delta
 		r[2] -= delta * 1.6
 	rings = rings.filter(func(r): return r[2] > 0.0)
-	queue_redraw()
+	if Cull.tick(self, 2):
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -42,7 +44,7 @@ func _draw() -> void:
 	if deep > 0.0:
 		for s in snow:
 			var p := Vector2(fposmod(s.x - cam.x * 0.2 + t * 6.0, 1800.0), fposmod(s.y - cam.y * 0.2 + t * 12.0, 1040.0)) + view.position
-			draw_circle(p, 2.0, Color(0.8, 0.95, 1.0, 0.5 * deep))
+			draw_rect(Rect2(p, Vector2(3, 3)), Color(0.8, 0.95, 1.0, 0.5 * deep))
 	# limite de pressão do casco
 	var limit: float = main.pressure_limit_line()
 	if limit > 0.0 and absf(limit - cam.y) < 700:
