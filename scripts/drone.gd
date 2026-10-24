@@ -21,6 +21,7 @@ var look_angle := 0.0        # ângulo do cone de visão
 var timer := 0.0
 var t := 0.0
 var last_seen := Vector2.ZERO
+var sensing := false         # está vendo/sentindo o Manta AGORA
 
 
 func setup(m, a: float, b: float, y: float, is_corp: bool) -> void:
@@ -77,7 +78,9 @@ func _process(delta: float) -> void:
 		return
 
 	# --- sentido de proximidade e visão ---
+	sensing = false
 	if sees:
+		sensing = true
 		last_seen = pp
 		if d < 130.0:
 			alert = 1.0  # passou bem na frente: alerta máximo na hora
@@ -85,6 +88,7 @@ func _process(delta: float) -> void:
 			alert += delta * lerpf(1.8, 0.55, d / VIEW_LEN)
 	elif d < 110.0 and not hidden and not main.player_invulnerable():
 		alert += delta * 0.6  # "sente" Arthur por perto
+		sensing = true
 		last_seen = pp
 	else:
 		var decay := 0.12 if state in [State.ALERT, State.SEARCH] else 0.3
@@ -248,6 +252,13 @@ func threat() -> int:
 	if state == State.SUSPICIOUS or state == State.SEARCH:
 		return 1
 	return 0
+
+
+## Para a música de perigo: o drone está perseguindo ou acabou de detectar o Manta
+func danger() -> bool:
+	if state == State.ALERT:
+		return true
+	return sensing and alert > 0.2 and state != State.STUNNED
 
 
 func emp_point() -> Vector2:

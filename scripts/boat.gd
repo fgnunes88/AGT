@@ -24,6 +24,7 @@ var t := 0.0
 var timer := 0.0
 var claw := Vector2.ZERO        # posição da garra (local)
 var claw_closed := false
+var sensing := false
 
 
 func setup(m, a: float, b: float) -> void:
@@ -45,6 +46,12 @@ func threat() -> int:
 	if state == State.SUSPICIOUS:
 		return 1
 	return 0
+
+
+func danger() -> bool:
+	if state == State.CLAW:
+		return true
+	return sensing and alert > 0.2 and state != State.STUNNED
 
 
 func emp_point() -> Vector2:
@@ -83,6 +90,7 @@ func _process(delta: float) -> void:
 	var pp: Vector2 = main.player.global_position
 	var hidden: bool = main.player_hidden
 	var sees: bool = _sees(pp, hidden) and not main.player_invulnerable()
+	sensing = sees
 	position.y = sin(t * 1.5) * 4.0
 
 	match state:

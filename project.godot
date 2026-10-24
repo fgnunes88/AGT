@@ -15,6 +15,10 @@ config/description="Jogo 2D de exploração oceânica para crianças de 6 a 10 a
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
+[audio]
+
+driver/output_latency.web=100
+
 [display]
 
 window/size/viewport_width=1280
@@ -28,7 +32,3 @@ window/dpi/allow_hidpi=false
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.02, 0.08, 0.15, 1)
-
-[audio]
-
-driver/output_latency.web=100

@@ -19,6 +19,7 @@ const FALLBACK := {
 const ALIASES := {"escaneando": "escaneado"}
 
 const FADE_TIME := 1.5
+const FAST_FADE := 0.25   # troca rápida (entrada e saída da música de perigo)
 const MUSIC_DB := -6.0
 const SFX_DB := -2.0
 
@@ -43,11 +44,11 @@ function start(urls, i){
   a.src = urls[i]; a.currentTime = 0; a.volume = 0;
   var pr = a.play();
   if (pr && pr.catch) pr.catch(function(){});
-  fade(M.muted ? 0 : M.vol, 800);
+  fade(M.muted ? 0 : M.vol, M.inMs || 800);
 }
-M.play = function(urls){
-  M.want = urls;
-  if (!a.paused && a.volume > 0.01){ fade(0, 400, function(){ a.pause(); start(urls, 0); }); }
+M.play = function(urls, fast){
+  M.want = urls; M.inMs = fast ? 200 : 800;
+  if (!a.paused && a.volume > 0.01){ fade(0, fast ? 120 : 400, function(){ a.pause(); start(urls, 0); }); }
   else { a.pause(); start(urls, 0); }
 };
 M.stop = function(){ M.want = null; fade(0, 600, function(){ a.pause(); }); };
@@ -168,30 +169,31 @@ func _set_loop(s: AudioStream) -> void:
 
 
 ## Troca a música com transição suave. Chamar várias vezes com a mesma faixa não faz nada.
-func play(track: String) -> void:
+func play(track: String, fast := false) -> void:
 	if track == current:
 		return
 	current = track
 	if web:
-		_web_play(track)
+		_web_play(track, fast)
 		return
+	var ft := FAST_FADE if fast else FADE_TIME
 	var s := _music_stream(track)
 	var old := players[active]
 	if s != null and old.stream == s and old.playing:
 		return  # a faixa reserva é a mesma que já está tocando
-	_fade(old, -80.0, true)
+	_fade(old, -80.0, true, ft)
 	if s == null:
 		return
 	_set_loop(s)
 	active = 1 - active
 	var p := players[active]
 	p.stream = s
-	p.volume_db = -40.0
+	p.volume_db = -20.0 if fast else -40.0
 	p.play()
-	_fade(p, MUSIC_DB, false)
+	_fade(p, MUSIC_DB, false, ft)
 
 
-func _web_play(track: String) -> void:
+func _web_play(track: String, fast := false) -> void:
 	var urls: Array = []
 	var tname := track
 	var tries := 0
@@ -200,7 +202,7 @@ func _web_play(track: String) -> void:
 		urls.append("music/" + tname + ".ogg")
 		tname = FALLBACK.get(tname, "")
 		tries += 1
-	JavaScriptBridge.eval("window.agtMusic && window.agtMusic.play(" + JSON.stringify(urls) + ");", true)
+	JavaScriptBridge.eval("window.agtMusic && window.agtMusic.play(" + JSON.stringify(urls) + ", " + ("true" if fast else "false") + ");", true)
 
 
 func stop() -> void:
@@ -212,13 +214,13 @@ func stop() -> void:
 		_fade(p, -80.0, true)
 
 
-func _fade(p: AudioStreamPlayer, to_db: float, stop_after: bool) -> void:
+func _fade(p: AudioStreamPlayer, to_db: float, stop_after: bool, time := FADE_TIME) -> void:
 	var i := players.find(p)
 	if tweens[i] != null and tweens[i].is_valid():
 		tweens[i].kill()
 	var tw := create_tween()
 	tweens[i] = tw
-	tw.tween_property(p, "volume_db", to_db, FADE_TIME)
+	tw.tween_property(p, "volume_db", to_db, time)
 	if stop_after:
 		tw.tween_callback(p.stop)
 

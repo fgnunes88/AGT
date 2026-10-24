@@ -34,7 +34,9 @@ const BuoyScript = preload("res://scripts/sonar_buoy.gd")
 # música de cada zona (nomes dos arquivos em res://music/)
 const ZONE_MUSIC := ["recife", "mar_aberto", "penumbra", "fossa", "santuario"]
 
-enum GameState { TITLE, PLAY, CATALOG, PAUSE, CUTSCENE, ENDING }
+enum GameState { TITLE, PLAY, CATALOG, PAUSE, CUTSCENE, ENDING, GAME_OVER }
+
+const MAX_LIVES := 3
 
 const SCAN_RANGE := 260.0
 const NET_RANGE := 160.0
@@ -46,7 +48,9 @@ var fps_timer := 0.0
 var baker = null             # transforma desenhos complexos em imagens prontas (modo leve)
 var light_tex: GradientTexture2D
 var music: Node
-var danger_hold := 0.0      # mantém a música de perigo uns segundos após o alerta
+var danger_hold := 0.0      # mantém a música de perigo um instante após o perigo passar
+var lives := MAX_LIVES      # chances: cada captura por drone ou barco gasta uma
+var game_over_t := 0.0
 
 # --- nós do mundo ---
 var world: Node2D
@@ -70,6 +74,7 @@ var title: Control
 var catalog_ui: Control
 var ending_ui: Control
 var pause_ui: Control
+var game_over_ui: Control
 var touch: Control
 var start_gate: Control
 
@@ -186,6 +191,8 @@ func _build_ui() -> void:
 	ui.add_child(catalog_ui)
 	pause_ui = _make_pause_ui()
 	ui.add_child(pause_ui)
+	game_over_ui = _make_game_over_ui()
+	ui.add_child(game_over_ui)
 	ending_ui = EndingScript.new()
 	ending_ui.finished.connect(_show_title)
 	ui.add_child(ending_ui)
@@ -221,6 +228,60 @@ func _make_pause_ui() -> Control:
 		if ev is InputEventMouseButton and ev.pressed and state == GameState.PAUSE:
 			_set_paused(false))
 	return c
+
+
+func _make_game_over_ui() -> Control:
+	var c := ColorRect.new()
+	c.color = Color(0.08, 0.0, 0.03, 0.82)
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	c.visible = false
+	c.mouse_filter = Control.MOUSE_FILTER_STOP
+	var big := Label.new()
+	big.text = "GAME OVER"
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	big.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	big.set_anchors_preset(Control.PRESET_FULL_RECT)
+	big.offset_bottom = -140
+	big.add_theme_font_size_override("font_size", 96)
+	big.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
+	big.add_theme_color_override("font_outline_color", Color.BLACK)
+	big.add_theme_constant_override("outline_size", 16)
+	c.add_child(big)
+	var l := Label.new()
+	l.name = "Info"
+	l.text = "O Manta foi capturado 3 vezes...\nMas todo guardião tenta de novo!\n\nToque na tela ou aperte ENTER para recomeçar"
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.offset_top = 170
+	l.add_theme_font_size_override("font_size", 32)
+	l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
+	l.add_theme_color_override("font_outline_color", Color.BLACK)
+	l.add_theme_constant_override("outline_size", 8)
+	c.add_child(l)
+	c.gui_input.connect(func(ev: InputEvent):
+		if ((ev is InputEventMouseButton and ev.pressed) or (ev is InputEventScreenTouch and ev.pressed)) and state == GameState.GAME_OVER:
+			_restart_after_game_over())
+	return c
+
+
+func _game_over() -> void:
+	state = GameState.GAME_OVER
+	game_over_t = 1.2   # evita pular a tela sem querer
+	get_tree().paused = true
+	music.stop_loops()
+	music.stop()
+	hud.messages.clear()
+	game_over_ui.visible = true
+
+
+func _restart_after_game_over() -> void:
+	if game_over_t > 0.0:
+		return
+	game_over_ui.visible = false
+	get_tree().paused = false
+	music.sfx("menu_ok")
+	_start_game()
 
 
 func _make_start_gate() -> Control:
@@ -260,6 +321,7 @@ func _show_title() -> void:
 	hud.clear()
 	ending_ui.visible = false
 	pause_ui.visible = false
+	game_over_ui.visible = false
 	catalog_ui.visible = false
 	title.visible = true
 	state = GameState.TITLE
@@ -297,6 +359,9 @@ func _clear_world() -> void:
 
 func _start_game() -> void:
 	_clear_world()
+	get_tree().paused = false
+	lives = MAX_LIVES
+	danger_hold = 0.0
 	catalog = {}
 	saved = 0
 	parts = [0, 0, 0]
@@ -465,6 +530,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_paused(false)
 			elif event.is_action_pressed("menu"):
 				_show_title()
+		GameState.GAME_OVER:
+			if event.is_action_pressed("accept") or event.is_action_pressed("pause"):
+				_restart_after_game_over()
 	if event.is_action_pressed("toggle_music") and state != GameState.TITLE:
 		var on: bool = music.toggle_music()
 		if state == GameState.PLAY:
@@ -495,6 +563,7 @@ func _close_catalog() -> void:
 
 
 func _process(delta: float) -> void:
+	game_over_t = maxf(0.0, game_over_t - delta)
 	if lite:
 		fps_timer += delta
 		if fps_timer > 5.0:
@@ -547,17 +616,19 @@ func _update_music(delta: float) -> void:
 	if state == GameState.CUTSCENE:
 		music.play("santuario")
 		return
-	if alert_level() == 2:
-		danger_hold = 4.0
+	# a música de perigo entra assim que um inimigo detecta o Manta
+	# e sai logo que ele deixa de ser visto/perseguido
+	if in_danger():
+		danger_hold = 0.6
 	else:
 		danger_hold = maxf(0.0, danger_hold - delta)
 	var z := Data.zone_of(player.position.y)
 	if final_started and not catalog.has(Data.MEGALODON_ID):
 		music.play("megalodon")
 	elif danger_hold > 0.0:
-		music.play("perigo")
+		music.play("perigo", true)
 	else:
-		music.play(ZONE_MUSIC[z])
+		music.play(ZONE_MUSIC[z], music.current == "perigo")
 
 
 func _update_light() -> void:
@@ -711,12 +782,20 @@ func player_invulnerable() -> bool:
 
 
 func player_caught() -> void:
-	if invuln > 0.0:
+	if invuln > 0.0 or state != GameState.PLAY:
 		return
 	invuln = 3.0
+	lives -= 1
+	hud.lose_life()
 	hud.do_flash(Color(1.0, 0.3, 0.3))
 	music.sfx("apanhado")
-	hud.say("Ops! Um drone apanhou o Manta e te levou de volta. Esconda-se nas algas ou use o EMP (Q)!", 5.0, Color(1.0, 0.7, 0.7))
+	if lives <= 0:
+		_game_over()
+		return
+	if lives == 1:
+		hud.say("Ops! O Manta foi apanhado. ÚLTIMA CHANCE! Esconda-se nas algas ou use o EMP (Q)!", 5.0, Color(1.0, 0.6, 0.6))
+	else:
+		hud.say("Ops! O Manta foi apanhado e voltou ao ponto seguro. Restam %d chances. Esconda-se nas algas ou use o EMP (Q)!" % lives, 5.0, Color(1.0, 0.7, 0.7))
 	var z := mini(Data.zone_of(player.position.y), 3)
 	player.position = Data.CHECKPOINTS[z]
 	player.velocity = Vector2.ZERO
@@ -746,6 +825,13 @@ func sonar_alarm(p: Vector2, radius: float) -> void:
 	for d in drones:
 		if is_instance_valid(d) and d.position.distance_to(p) < radius:
 			d.alarm(p)
+
+
+func in_danger() -> bool:
+	for e in enemies:
+		if is_instance_valid(e) and e.danger():
+			return true
+	return false
 
 
 func alert_level() -> int:

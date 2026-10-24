@@ -33,6 +33,10 @@ func threat() -> int:
 	return 0
 
 
+func danger() -> bool:
+	return alarm > 0.0
+
+
 func emp_point() -> Vector2:
 	return global_position
 

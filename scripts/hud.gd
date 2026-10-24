@@ -4,6 +4,9 @@ const Cull = preload("res://scripts/cull.gd")
 
 const Data = preload("res://scripts/data.gd")
 const Art = preload("res://scripts/shark_art.gd")
+const PlayerScript = preload("res://scripts/player.gd")
+
+const LIVES_RECT := Rect2(14, 228, 168, 66)
 
 var main
 var t := 0.0
@@ -14,12 +17,24 @@ var flash := 0.0
 var flash_col := Color.WHITE
 var font: Font
 var steady := false   # cena final: não acelerar as falas
+var life_icon: Node2D    # mini Manta do contador de vidas (mesmo desenho do submarino)
+var life_lost := 0.0     # animação quando uma vida se perde
 
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	life_icon = PlayerScript.new()
+	life_icon.process_mode = Node.PROCESS_MODE_DISABLED   # só desenha, não se move
+	life_icon.position = LIVES_RECT.position + Vector2(58, 38)
+	life_icon.scale = Vector2(0.52, 0.52)
+	life_icon.visible = false
+	add_child(life_icon)
+
+
+func lose_life() -> void:
+	life_lost = 1.6
 
 
 func say(text: String, seconds := 4.5, col := Color.WHITE, keep_all := false) -> void:
@@ -49,11 +64,19 @@ func clear() -> void:
 	steady = false
 	card_id = -1
 	flash = 0.0
+	life_lost = 0.0
 
 
 func _process(delta: float) -> void:
 	t += delta
 	flash = maxf(0.0, flash - delta * 1.5)
+	life_lost = maxf(0.0, life_lost - delta)
+	if life_icon:
+		life_icon.visible = main != null and main.playing() and main.player != null
+		if life_icon.visible:
+			life_icon.t += delta
+			life_icon.blink = life_lost
+			life_icon.queue_redraw()
 	if messages.size() > 0:
 		messages[0][1] -= delta * (1.0 if messages.size() == 1 or steady else 1.6)
 		if messages[0][1] <= 0.0:
@@ -105,6 +128,18 @@ func _draw() -> void:
 	else:
 		_text(Vector2(30, 160), "Gravações do pai: %d / %d" % [main.logs_found, Data.LOGS.size()], 20, Color(1.0, 0.8, 0.4))
 	_text(Vector2(30, 188), "Tubarões salvos: %d / %d" % [main.saved, Data.NETS.size()], 20, Color(1.0, 0.85, 0.4))
+
+	# contador de vidas: mini Manta + "x3"
+	var lr := LIVES_RECT
+	var lcol := Color(0.02, 0.08, 0.16, 0.72)
+	if life_lost > 0.0:
+		lcol = Color(0.4, 0.05, 0.05, 0.85)
+	_panel(lr, lcol)
+	var lives_col := Color(1.0, 0.95, 0.6)
+	if main.lives <= 1:
+		lives_col = Color(1.0, 0.4, 0.35) if int(t * 3.0) % 2 == 0 else Color(1.0, 0.75, 0.6)
+	var big := 34 + int(life_lost * 10.0)
+	_text(lr.position + Vector2(104, 46), "x%d" % maxi(main.lives, 0), big, lives_col)
 
 	# painel direito: alerta e EMP
 	var level: int = main.alert_level()

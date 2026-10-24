@@ -7,8 +7,9 @@ const Cull = preload("res://scripts/cull.gd")
 const Data = preload("res://scripts/data.gd")
 const Art = preload("res://scripts/shark_art.gd")
 
-const SCARE_DIST := 240.0     # distância em que o tubarão percebe o Manta
-const SCARE_SPEED := 150.0    # acima desta velocidade do Manta, ele se assusta
+const SCARE_DIST := 330.0     # distância em que o tubarão percebe o Manta
+const SCARE_SPEED := 105.0    # acima desta velocidade do Manta, ele se assusta
+const SPACING := 260.0        # distância que cada tubarão tenta manter dos outros
 
 var main
 var species_id := 0
@@ -22,6 +23,9 @@ var t := 0.0
 var catalogued := false   # a espécie já está no catálogo
 var chipped := false      # ESTE tubarão já recebeu o chip de proteção
 var flee_t := 0.0
+var stuck_t := 0.0          # tempo tentando chegar ao alvo atual
+var push := Vector2.ZERO    # empurrãozinho para longe de outros tubarões
+var push_t := 0.0
 var glow: PointLight2D
 var anim_t := 0.0
 var holder: Node2D          # no navegador: imagem pronta do tubarão (vira para os dois lados)
@@ -64,14 +68,57 @@ static func _make_drawer(spd: Dictionary) -> Callable:
 		Art.draw(ci, Vector2.ZERO, spd["len"], spd["h"], 1.0, spd["pattern"], spd["body"], spd["belly"], f * SWIM_PERIOD / FRAMES)
 
 
-func _random_target() -> Vector2:
+func _clamp_area(p: Vector2) -> Vector2:
+	return Vector2(clampf(p.x, area.position.x, area.end.x), clampf(p.y, area.position.y, area.end.y))
+
+
+func _one_target() -> Vector2:
 	# tubarões rápidos fazem percursos longos e retos; os lentos passeiam por perto
 	var cruise: float = sp["speed"]
+	var cx := area.get_center().x
 	if cruise > 120.0:
-		var x := area.position.x if position.x > area.get_center().x else area.end.x
-		return Vector2(x + randf_range(-300, 300), randf_range(area.position.y, area.end.y))
-	var near := position + Vector2(randf_range(-700, 700), randf_range(-300, 300))
-	return Vector2(clampf(near.x, area.position.x, area.end.x), clampf(near.y, area.position.y, area.end.y))
+		var x := randf_range(area.position.x, cx - 300.0) if position.x > cx else randf_range(cx + 300.0, area.end.x)
+		return Vector2(x, randf_range(area.position.y, area.end.y))
+	return _clamp_area(position + Vector2(randf_range(-700, 700), randf_range(-300, 300)))
+
+
+## Sorteia alguns destinos e escolhe o que tem menos tubarões por perto
+## (assim eles se espalham pelo cenário em vez de se juntarem nos cantos).
+func _random_target() -> Vector2:
+	stuck_t = 0.0
+	var best := _one_target()
+	if main == null or main.sharks_node == null:
+		return best
+	var best_score := INF
+	for i in 4:
+		var c := best if i == 0 else _one_target()
+		var score := 0.0
+		for o in main.sharks_node.get_children():
+			if o == self or o.trapped:
+				continue
+			var d: float = o.position.distance_to(c)
+			if d < 700.0:
+				score += 1.0 - d / 700.0
+		# evita os cantos e as bordas
+		var edge := minf(minf(c.x - area.position.x, area.end.x - c.x) / 400.0, 1.0)
+		score += (1.0 - edge) * 0.6
+		if score < best_score:
+			best_score = score
+			best = c
+	return best
+
+
+func _update_push() -> void:
+	push = Vector2.ZERO
+	if main == null or main.sharks_node == null:
+		return
+	for o in main.sharks_node.get_children():
+		if o == self or o.trapped:
+			continue
+		var off: Vector2 = position - o.position
+		var d := off.length()
+		if d < SPACING and d > 0.01:
+			push += off / d * (1.0 - d / SPACING)
 
 
 func can_scan() -> bool:
@@ -92,7 +139,7 @@ func hit_radius() -> float:
 
 func free_from_trap() -> void:
 	trapped = false
-	target = position + Vector2(randf_range(-600, 600), randf_range(-150, 150))
+	target = _clamp_area(position + Vector2(randf_range(-600, 600), randf_range(-150, 150)))
 	velocity = Vector2(0, -60)
 
 
@@ -103,8 +150,12 @@ func scare(from: Vector2) -> void:
 	var away := (position - from).normalized()
 	if away == Vector2.ZERO:
 		away = Vector2(1, 0)
-	var p := position + away * 600.0
-	target = Vector2(clampf(p.x, area.position.x, area.end.x), clampf(p.y, area.position.y, area.end.y))
+	# foge para longe do Manta; se a fuga bater num canto, desvia para um lado
+	target = _clamp_area(position + away * 600.0)
+	for ang in [0.9, -0.9, 1.6, -1.6]:
+		if target.distance_to(position) > 380.0:
+			break
+		target = _clamp_area(position + away.rotated(ang) * 600.0)
 	if main:
 		main.on_shark_scared()
 
@@ -133,10 +184,19 @@ func _process(delta: float) -> void:
 	flee_t = maxf(0.0, flee_t - delta)
 	var speed: float = sp["flee"] if flee_t > 0.0 else sp["speed"]
 	var to := target - position
-	if to.length() < 50.0:
+	stuck_t += delta
+	if to.length() < 50.0 or (stuck_t > 9.0 and flee_t <= 0.0):
 		target = _random_target()
+		to = target - position
+	push_t -= delta
+	if push_t <= 0.0:
+		push_t = 0.3
+		_update_push()
+	var want := to.normalized() * speed
+	if flee_t <= 0.0:
+		want = (to.normalized() + push * 1.2).normalized() * speed
 	var turn := 3.0 if flee_t > 0.0 else 1.5
-	velocity = velocity.lerp(to.normalized() * speed, clampf(delta * turn, 0.0, 1.0))
+	velocity = velocity.lerp(want, clampf(delta * turn, 0.0, 1.0))
 	position += velocity * delta
 	position.x = clampf(position.x, 100, Data.WORLD_W - 100)
 	position.y = clampf(position.y, area.position.y - 40, area.end.y + 40)
