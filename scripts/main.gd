@@ -30,11 +30,17 @@ const BakerScript = preload("res://scripts/baker.gd")
 const BoatScript = preload("res://scripts/boat.gd")
 const DartScript = preload("res://scripts/dart.gd")
 const BuoyScript = preload("res://scripts/sonar_buoy.gd")
+const LoadingScript = preload("res://scripts/loading.gd")
+
+# efeitos carregados na tela de carregamento
+const SFX_LIST := ["alarme_base", "alerta", "apanhado", "casco", "catalogo", "chip", "chip_disparo", "emp", "escaneado",
+	"fim", "garra", "gravacao", "impacto", "megalodon_rugido", "menu_mover", "menu_ok", "motor", "nova_especie",
+	"peca", "sonar_alarme", "sonar_onda", "suspeita", "tubarao_solto"]
 
 # música de cada zona (nomes dos arquivos em res://music/)
 const ZONE_MUSIC := ["recife", "mar_aberto", "penumbra", "fossa", "santuario"]
 
-enum GameState { TITLE, PLAY, CATALOG, PAUSE, CUTSCENE, ENDING, GAME_OVER }
+enum GameState { TITLE, PLAY, CATALOG, PAUSE, CUTSCENE, ENDING, GAME_OVER, LOADING }
 
 const MAX_LIVES := 3
 
@@ -75,6 +81,12 @@ var catalog_ui: Control
 var ending_ui: Control
 var pause_ui: Control
 var game_over_ui: Control
+var loading_ui: Control
+# --- carregamento ---
+var load_base := 0          # imagens já prontas antes deste carregamento
+var load_step := 0          # etapa de aquecimento (sons e visita às zonas)
+var load_wait := 0          # quadros parados em cada etapa
+var warm_points: Array = []
 var touch: Control
 var start_gate: Control
 
@@ -193,6 +205,8 @@ func _build_ui() -> void:
 	ui.add_child(pause_ui)
 	game_over_ui = _make_game_over_ui()
 	ui.add_child(game_over_ui)
+	loading_ui = LoadingScript.new()
+	ui.add_child(loading_ui)
 	ending_ui = EndingScript.new()
 	ending_ui.finished.connect(_show_title)
 	ui.add_child(ending_ui)
@@ -322,6 +336,7 @@ func _show_title() -> void:
 	ending_ui.visible = false
 	pause_ui.visible = false
 	game_over_ui.visible = false
+	loading_ui.visible = false
 	catalog_ui.visible = false
 	title.visible = true
 	state = GameState.TITLE
@@ -381,6 +396,68 @@ func _start_game() -> void:
 	throttle = {}
 	hud.clear()
 	_build_world()
+	_begin_loading()
+
+
+# ------------------------------------------------------------------ carregamento
+
+## Mostra a tela de carregamento. O mundo já existe por trás dela, mas o jogo
+## só começa quando todas as imagens estiverem prontas e cada zona tiver sido vista uma vez.
+func _begin_loading() -> void:
+	state = GameState.LOADING
+	player.locked = true
+	load_step = 0
+	load_wait = 0
+	load_base = baker.done if baker else 0
+	if baker:
+		baker.per_frame = 16   # sem jogo rodando, pode preparar mais imagens por quadro
+	# pontos que a câmera visita escondida (a placa de vídeo prepara tudo de uma vez)
+	warm_points = []
+	for z in range(5):
+		for x in [900.0, 3500.0, 6100.0]:
+			warm_points.append(Vector2(x, z * Data.ZONE_H + 500.0 if z < 4 else 4350.0))
+	loading_ui.begin()
+
+
+func _update_loading() -> void:
+	var bake_total := 1
+	var bake_done := 1
+	if baker:
+		bake_total = maxi(1, baker.queued - load_base)
+		bake_done = baker.done - load_base
+	var bake_frac := clampf(float(bake_done) / bake_total, 0.0, 1.0)
+	if baker and baker.busy():
+		loading_ui.progress = bake_frac * 0.75
+		return
+	# depois das imagens: carrega os sons e passa a câmera por todas as zonas
+	var steps := SFX_LIST.size() + warm_points.size()
+	if load_step < SFX_LIST.size():
+		music.preload_sfx(SFX_LIST[load_step])
+		load_step += 1
+	elif load_step < steps:
+		camera.position = warm_points[load_step - SFX_LIST.size()]
+		camera.reset_smoothing()
+		load_wait += 1
+		if load_wait >= 3:
+			load_wait = 0
+			load_step += 1
+	elif load_step == steps:
+		camera.position = player.position
+		camera.reset_smoothing()
+		load_wait += 1
+		if load_wait >= 10:
+			_finish_loading()
+		return
+	loading_ui.progress = 0.75 + 0.25 * float(load_step) / steps
+
+
+func _finish_loading() -> void:
+	if baker:
+		baker.per_frame = BakerScript.PER_FRAME
+	loading_ui.progress = 1.0
+	loading_ui.visible = false
+	player.locked = false
+	player.velocity = Vector2.ZERO
 	state = GameState.PLAY
 	hud.say("Albatroz: Movimento suspeito detectado no recife. Redes ilegais à vista.", 5.0, Color(0.6, 0.9, 1.0))
 	hud.say("Arthur: Hora de trabalhar. Vou catalogar cada tubarão e soltar os que estiverem presos!", 5.0, Color(1.0, 0.9, 0.5))
@@ -569,6 +646,8 @@ func _process(delta: float) -> void:
 		if fps_timer > 5.0:
 			fps_timer = 0.0
 			print("FPS: ", Engine.get_frames_per_second())
+	if state == GameState.LOADING and player != null:
+		_update_loading()
 	if state != GameState.PLAY and state != GameState.CUTSCENE or player == null:
 		music.stop_loops()
 	if not playing() or player == null:

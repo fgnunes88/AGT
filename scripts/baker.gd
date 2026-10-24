@@ -11,6 +11,9 @@ var pending: Array = []     # [viewport, lista de texturas, quadro] que ainda v�
 var rendering: Array = []   # [viewport, lista, quadro, espera] já renderizando
 var sprites := {}           # textura provisória -> sprites que a usam
 const PER_FRAME := 8
+var per_frame := PER_FRAME   # a tela de carregamento aumenta este valor
+var queued := 0             # imagens pedidas desde o início
+var done := 0               # imagens já prontas
 var headless := DisplayServer.get_name() == "headless"   # testes automáticos (sem placa de vídeo)        # quantas imagens criar por quadro (evita engasgos)
 
 
@@ -51,6 +54,7 @@ func request(key: String, area: Rect2, scale: float, frames: int, drawer: Callab
 		add_child(vp)
 		texs.append(vp.get_texture())
 		pending.append([vp, texs, f])
+		queued += 1
 	cache[key] = texs
 	return texs
 
@@ -65,6 +69,7 @@ func _process(_delta: float) -> void:
 			still.append(r)
 			continue
 		var vp: SubViewport = r[0]
+		done += 1
 		if headless:
 			continue
 		var img := vp.get_texture().get_image()
@@ -81,12 +86,17 @@ func _process(_delta: float) -> void:
 	rendering = still
 	# 2) libera alguns viewports por quadro para renderizarem uma única vez
 	var n := 0
-	while pending.size() > 0 and n < PER_FRAME:
+	while pending.size() > 0 and n < per_frame:
 		var it: Array = pending.pop_front()
 		var vp2: SubViewport = it[0]
 		vp2.render_target_update_mode = SubViewport.UPDATE_ONCE
 		rendering.append([vp2, it[1], it[2], 2])
 		n += 1
+
+
+## Ainda há imagens sendo preparadas?
+func busy() -> bool:
+	return pending.size() > 0 or rendering.size() > 0
 
 
 ## Mostra uma textura assada no lugar certo (a área original do desenho).

@@ -225,6 +225,11 @@ func _fade(p: AudioStreamPlayer, to_db: float, stop_after: bool, time := FADE_TI
 		tw.tween_callback(p.stop)
 
 
+## Carrega um efeito antes de ser usado (tela de carregamento: evita engasgos no 1º uso)
+func preload_sfx(sfx_name: String) -> void:
+	_find(SFX_DIR, sfx_name)
+
+
 ## Efeito ou vinheta curta. volume_offset em dB (negativo = mais baixo)
 func sfx(sfx_name: String, volume_offset := 0.0) -> void:
 	var s := _find(SFX_DIR, sfx_name)
